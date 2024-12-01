@@ -25,17 +25,22 @@ def apply_schema_to_db(db_file, schema_file):
     except Exception as e:
         print(f"Error applying schema: {e}")
 
-# Paths to your files
-schema_file_path = "final_project_files/schema.sql"
-db_file_path = "final_project_files/reservations.db"
+def main():
+    # Paths to your files
+    schema_file_path = "~/final_project_files/schema.sql"
+    db_file_path = "~/final_project_files/reservations.db"
 
-# Apply the schema to the database
-apply_schema_to_db(db_file_path, schema_file_path)
+    # Apply the schema to the database
+    apply_schema_to_db(db_file_path, schema_file_path)
 
-app = Flask(__name__)
+    app = Flask(__name__)
 
-@app.route("/", 
- methods=["GET", "POST"])
+    @app.route("/", methods=["GET", "POST"])
+    def index():
+        # Add your code to handle GET and POST requests here
+        return "Hello!"  # Replace with your desired response
 
-if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    if __name__ == "__main__":
+        app.run(host='0.0.0.0', port=5000, debug=True)
+
+main()
