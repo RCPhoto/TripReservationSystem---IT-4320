@@ -1,5 +1,4 @@
 import os
-from flask import Flask, render_template, request
 import sqlite3
 
 def apply_schema_to_db(db_file, schema_file):
@@ -13,7 +12,7 @@ def apply_schema_to_db(db_file, schema_file):
         # Connect to the existing database
         with sqlite3.connect(db_file) as conn:
             cursor = conn.cursor()
-
+            print(os.getcwd())
             # Read and execute the schema file
             with open(schema_file, 'r') as f:
                 sql_script = f.read()
@@ -27,20 +26,14 @@ def apply_schema_to_db(db_file, schema_file):
 
 def main():
     # Paths to your files
-    schema_file_path = "~/final_project_files/schema.sql"
-    db_file_path = "~/final_project_files/reservations.db"
+    schema_file_path = "schema.sql"
+    db_file_path = "reservations.db"
 
     # Apply the schema to the database
     apply_schema_to_db(db_file_path, schema_file_path)
 
-    app = Flask(__name__)
 
-    @app.route("/", methods=["GET", "POST"])
-    def index():
-        # Add your code to handle GET and POST requests here
-        return "Hello!"  # Replace with your desired response
-
-    if __name__ == "__main__":
+main()
         app.run(host='0.0.0.0', port=5000, debug=True)
 
 main()
