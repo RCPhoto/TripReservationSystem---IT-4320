@@ -1,5 +1,5 @@
 import sqlite3
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, flash
 
 def apply_schema_to_db(db_file, schema_file):
     """Applies a schema from an SQL file to an existing SQLite database."""
@@ -14,7 +14,6 @@ def apply_schema_to_db(db_file, schema_file):
     except Exception as e:
         print(f"Error applying schema: {e}")
 
-# Paths to your files (update with your actual paths)
 schema_file_path = "schema.sql"  
 db_file_path = "reservations.db" 
 
@@ -23,7 +22,7 @@ apply_schema_to_db(db_file_path, schema_file_path)
 
 app = Flask(__name__)
 
-# --- Database Helper Functions ---
+# --- DB functions ---
 def get_db_connection():
     conn = sqlite3.connect(db_file_path)
     conn.row_factory = sqlite3.Row  # Access data by column name
@@ -38,31 +37,33 @@ def query_db(query, args=(), one=False):
     return (rv[0] if rv else None) if one else rv
 
 # --- Flask Routes ---
-
-@app.route("/", methods=["GET", "POST"])
+@app.route('/')
 def index():
-    if request.method == "POST":
-        # Get form data
-        name = request.form["name"]
-        email = request.form["email"]
+    return render_template('index.html')
 
-        # ... other form fields ... 
+@app.route('/admin_login', methods=['GET', 'POST'])
+def admin_login():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
 
-        # Insert data into database (example)
-        conn = get_db_connection()
-        conn.execute("INSERT INTO reservations (name, email) VALUES (?, ?)", (name, email)) 
-        conn.commit()
-        conn.close()
+        admin = query_db('SELECT * FROM Admins WHERE username = ?', (username,), one=True) 
+        if admin and admin['password'] == password:  
+            flash('Login successful!', 'success')
+            return redirect(url_for('admin_dashboard'))  # Redirect 
+        else:
+            flash('Invalid username or password', 'danger')
 
-        return redirect(url_for('index'))  # Redirect after successful submission
+    return render_template('admin_login.html')
 
-    else:  # GET request
-        # Fetch reservations from database (example)
-        reservations = query_db("SELECT * FROM reservations")
-        return render_template("index.html", reservations=reservations)
+def admin_dashboard():
+    return render_template('admin_dashboard.html')
+
+@app.route('/seat_reservation')
+def seat_reservation():
+    return render_template('seat_reservation.html')
+
+
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=True)
-        app.run(host='0.0.0.0', port=5000, debug=True)
-
-main()
