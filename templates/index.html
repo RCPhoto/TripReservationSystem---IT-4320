@@ -1,19 +1,15 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Bus Reserver</title>
-</head>
-<body>
-    <h1>Bus Reserver</h1>
+{% extends "base.html" %}
+
+{% block title %}Home{% endblock %}
+
+{% block content %}
+<div class="text-center">
+    <h1>IT-4320 Trip Reservation System</h1>
+    <hr>
+    <p>Welcome to the IT-4320 reservation system. Select whether to make a reservation or log in as administrator.</p>
     <div>
-        <a href="{{ url_for('admin_login') }}">
-            <button type="button">Login as Admin</button> 
-        </a>
+        <a href="{{ url_for('admin_login') }}" class="btn btn-primary btn-lg mx-2">Admin Login</a>
+        <a href="{{ url_for('seat_reservation') }}" class="btn btn-primary btn-lg mx-2">Reserve a Seat</a>
     </div>
-    <div> 
-        <a href="{{ url_for('seat_reservation') }}">
-            <button type="button">Reserve a seat</button>
-        </a>
-    </div>
-</body>
-</html>
+</div>
+{% endblock %}
