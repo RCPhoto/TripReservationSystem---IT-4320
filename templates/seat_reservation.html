@@ -1,18 +1,49 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Seat Reservation</title>
-</head>
-<body>
-    <h1>Seat Reservation</h1>
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            <ul class="flashes">
-            {% for category, message in messages %}
-                <li class="{{ category }}">{{ message }}</li>
+{% extends "base.html" %}
+
+{% block title %}Seat Reservation{% endblock %}
+
+{% block content %}
+<div class="text-center">
+    <h1>Reserve Your Seat</h1>
+</div>
+<h3>Seating Chart</h3>
+<p>X = Reserved, O = Available</p>
+<table class="table table-bordered text-center">
+    {% for row in seating_chart %}
+        <tr>
+            {% for seat in row %}
+                <td>{{ seat }}</td>
             {% endfor %}
-            </ul>
-        {% endif %}
-    {% endwith %}
-</body>
-</html>
+        </tr>
+    {% endfor %}
+</table>
+<form method="POST" class="w-50 mx-auto">
+    <div class="form-group">
+        <label for="first_name">First Name</label>
+        <input type="text" name="first_name" id="first_name" class="form-control" required>
+    </div>
+    <div class="form-group">
+        <label for="last_name">Last Name</label>
+        <input type="text" name="last_name" id="last_name" class="form-control" required>
+    </div>
+    <div class="form-group">
+        <label for="seat_row">Row</label>
+        <select name="seat_row" id="seat_row" class="form-control" required>
+            <option selected disabled>Choose Row</option>
+            {% for i in range(1, 13) %}
+                <option value="{{ i }}">{{ i }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="form-group">
+        <label for="seat_column">Column</label>
+        <select name="seat_column" id="seat_column" class="form-control" required>
+            <option selected disabled>Choose Column</option>
+            {% for i in range(1, 5) %}
+                <option value="{{ i }}">{{ i }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <button type="submit" class="btn btn-success btn-block mt-3">Reserve</button>
+</form>
+{% endblock %}
