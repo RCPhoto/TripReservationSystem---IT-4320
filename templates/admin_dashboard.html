@@ -1,9 +1,25 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Admin Dashboard</title>
-</head>
-<body>
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="text-center">
     <h1>Admin Dashboard</h1>
-</body>
-</html>
+</div>
+<h3>Seating Chart</h3>
+<p>X = Reserved, O = Available</p>
+<table class="table table-bordered text-center">
+    {% for row in seating_chart %}
+        <tr>
+            {% for seat in row %}
+                <td>{{ seat }}</td>
+            {% endfor %}
+        </tr>
+    {% endfor %}
+</table>
+
+<div class="text-center mt-4">
+    <h3>Total Sales: {{ total_sales }}</h3>
+</div>
+
+{% endblock %}
