@@ -79,60 +79,50 @@ def test_query():
 # seat function route
 @app.route('/seat_reservation', methods=['GET', 'POST'])
 def seat_reservation():
-    # Initialize
     seating_chart = [["O", "O", "O", "O"] for _ in range(12)]
     reservations = query_db("SELECT seatRow, seatColumn FROM reservations")
 
-    # charting update
     for r in reservations:
         seating_chart[r['seatRow'] - 1][r['seatColumn'] - 1] = "X"
 
     if request.method == 'POST':
-        # get data
+        # Get data
         first_name = request.form['first_name']
         last_name = request.form['last_name']
         seat_row = request.form['seat_row']
         seat_column = request.form['seat_column']
 
-        # validation
+        # Validate input
         if not first_name or not last_name or not seat_row or not seat_column:
-            flash("")
+            flash("All fields are required.", "danger")
             return render_template('seat_reservation.html', seating_chart=seating_chart)
 
-        # conversion of input to int
         seat_row = int(seat_row)
         seat_column = int(seat_column)
 
-        # Generate reservation code
-        seat_row_str = str(seat_row)
-        seat_column_str = str(seat_column)
-        random_part = os.urandom(4).hex()
-        reservation_code = "R" + seat_row_str + "C" + seat_column_str + "-" + random_part
+        # Generate eTicket Number
+        constant = "INFOTC4320"
+        e_ticket = ''.join(a + b for a, b in zip(first_name, constant)) + first_name[len(constant):]
 
-        # availability check
+        # Check seat availability
         if seating_chart[seat_row - 1][seat_column - 1] == "X":
-            flash(f"Row {seat_row}, Seat {seat_column} is already assigned. Please choose again.")
+            flash(f"Row {seat_row}, Seat {seat_column} is already reserved. Please choose another seat.", "warning")
             return render_template('seat_reservation.html', seating_chart=seating_chart)
 
-        # passenger name
+        # Create reservation
         full_name = first_name + " " + last_name
-
-        # insert reservation into the database
         query = """
             INSERT INTO reservations (passengerName, seatRow, seatColumn, eTicketNumber)
             VALUES (?, ?, ?, ?)
         """
-        query_args = (full_name, seat_row, seat_column, reservation_code)
+        query_args = (full_name, seat_row, seat_column, e_ticket)
         query_db(query, query_args)
 
-        # Flash a success message
-        success_message = "Reservation confirmed! Your code is: " + reservation_code
-        flash(success_message)
-
-        # Redirect the user back to the seat reservation page
+        # Success message
+        success_message = f"Congratulations, {first_name}! Row: {seat_row}, Seat: {seat_column} is now reserved for you. Enjoy your trip! Your eTicket number is: {e_ticket}"
+        flash(success_message, "success")
         return redirect(url_for('seat_reservation'))
 
-    # render
     return render_template('seat_reservation.html', seating_chart=seating_chart)
 
 if __name__ == "__main__":
