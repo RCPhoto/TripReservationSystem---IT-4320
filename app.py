@@ -60,13 +60,37 @@ def admin_login():
 
     return render_template('admin_login.html')
 
+def get_cost_matrix():
+    # Generate the cost matrix for 12 rows and 4 columns
+    return [[100, 75, 50, 100] for _ in range(12)]
+
 @app.route('/admin_dashboard')
 def admin_dashboard():
     if not session.get('logged_in'):
         flash('You need to be logged in to access the admin dashboard', 'danger')
         return redirect(url_for('admin_login'))
 
-    return render_template('admin_dashboard.html')
+    # Get the cost matrix
+    cost_matrix = get_cost_matrix()
+
+    # Get the reserved seats from the database
+    reservations = query_db("SELECT seatRow, seatColumn FROM reservations")
+
+    # Calculate total sales
+    total_sales = 0.0
+    seating_chart = [["O" for _ in range(4)] for _ in range(12)]  # Initialize seating chart with available seats (O)
+
+    for reservation in reservations:
+        row = reservation['seatRow'] - 1
+        column = reservation['seatColumn'] - 1
+        seating_chart[row][column] = "X"  # Mark the seat as reserved
+        total_sales += cost_matrix[row][column]  # Add the seat's cost to the total sales
+
+    # Format total sales to two decimal places
+    total_sales_formatted = f"${total_sales:.2f}"
+
+    # Render the dashboard with the seating chart and total sales
+    return render_template('admin_dashboard.html', seating_chart=seating_chart, total_sales=total_sales_formatted)
 
 @app.route('/test_query')  # Add a new route for testing
 def test_query():
