@@ -2,6 +2,9 @@ import sqlite3
 import os
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 
+##file path with universal acceptance (dynamic)
+db_file_path = os.path.join(os.path.dirname(__file__), "reservations.db")
+
 # --- DB functions ---
 def get_db_connection():
     conn = sqlite3.connect(db_file_path)
@@ -16,35 +19,49 @@ def query_db(query, args=(), one=False):
     conn.close()
     return (rv[0] if rv else None) if one else rv
 
-def apply_schema_to_db(db_file, schema_file):
-    """Applies a schema from an SQL file to an existing SQLite database."""
-    try:
-        with sqlite3.connect(db_file) as conn:
-            cursor = conn.cursor()
-            with open(schema_file, 'r') as f:
-                sql_script = f.read()
-            cursor.executescript(sql_script)
-            conn.commit()
-            print("Schema applied successfully")
-    except Exception as e:
-        print(f"Error applying schema: {e}")
+# def apply_schema_to_db(db_file, schema_file):
+#     """Applies a schema from an SQL file to an existing SQLite database."""
+#     try:
+#         with sqlite3.connect(db_file) as conn:
+#             cursor = conn.cursor()
+#             with open(schema_file, 'r') as f:
+#                 sql_script = f.read()
+#             cursor.executescript(sql_script)
+#             conn.commit()
+#             print("Schema applied successfully")
+#     except Exception as e:
+#         print(f"Error applying schema: {e}")
 
-schema_file_path = "schema.sql"
-db_file_path = "reservations.db"
+#schema_file_path = "schema.sql"
+#db_file_path = "reservations.db"
 
 # Apply the schema to the database
-apply_schema_to_db(db_file_path, schema_file_path)
+#apply_schema_to_db(db_file_path, schema_file_path)
 query_db("SELECT * FROM Admins")
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
 
+
+@app.context_processor
+def inject_logged_in():
+    return {
+        'logged_in': session.get('logged_in', False),
+        'username': session.get('username', '')
+    }
+
 # --- Flask Routes ---
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return render_template('index.html', logged_in=session.get('logged_in'), username=session.get('username'))
 
 @app.route('/admin_login', methods=['GET', 'POST'])
 def admin_login():
+    # Check if the admin is already logged in
+    if 'logged_in' in session and session['logged_in']:
+        # Add a variable to pass the error message to the template
+        error_message = 'You are already logged in. Please log out to switch accounts.'
+        return render_template('admin_login.html', error_message=error_message)
+
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']  # Remember to hash passwords!
@@ -52,13 +69,15 @@ def admin_login():
         admin = query_db('SELECT * FROM Admins WHERE username = ?', (username,), one=True)
         if admin and admin['password'] == password:
             # Set a session to indicate that the user is logged in
-            session['logged_in'] = True 
+            session['logged_in'] = True
+            session['username'] = username
             flash('Login successful!', 'success')
             return redirect(url_for('admin_dashboard'))
         else:
-            flash('Invalid username or password', 'danger')
+            error_message = 'Invalid username or password'
+            return render_template('admin_login.html', error_message=error_message)
 
-    return render_template('admin_login.html')
+    return render_template('admin_login.html', error_message=None)
 
 def get_cost_matrix():
     # Generate the cost matrix for 12 rows and 4 columns
@@ -70,6 +89,7 @@ def admin_dashboard():
         flash('You need to be logged in to access the admin dashboard', 'danger')
         return redirect(url_for('admin_login'))
 
+    username = session.get('username')
     # Get the cost matrix
     cost_matrix = get_cost_matrix()
 
@@ -90,7 +110,15 @@ def admin_dashboard():
     total_sales_formatted = f"${total_sales:.2f}"
 
     # Render the dashboard with the seating chart and total sales
-    return render_template('admin_dashboard.html', seating_chart=seating_chart, total_sales=total_sales_formatted)
+    return render_template('admin_dashboard.html', seating_chart=seating_chart, total_sales=total_sales_formatted, username=username, logged_in=True)
+
+@app.route('/admin_logout', methods=['POST'])
+def admin_logout():
+    # Remove the session to log out
+    session.pop('logged_in', None)
+    session.pop('username', None)  # Clear the username
+    flash('Logged out successfully.', 'success')
+    return redirect(request.referrer or url_for('index'))
 
 @app.route('/test_query')  # Add a new route for testing
 def test_query():
@@ -98,7 +126,7 @@ def test_query():
     query_db("INSERT INTO Admins (username, password) VALUES ('tree', 'tree')")
     query_db("SELECT * FROM Admins")  
 
-    return "Queries executed (check your terminal)" 
+    return "Queries executed (check your terminal)"
 
 # seat function route
 @app.route('/seat_reservation', methods=['GET', 'POST'])
@@ -109,45 +137,50 @@ def seat_reservation():
     for r in reservations:
         seating_chart[r['seatRow'] - 1][r['seatColumn'] - 1] = "X"
 
+    errors = {}
     if request.method == 'POST':
-        # Get data
-        first_name = request.form['first_name']
-        last_name = request.form['last_name']
-        seat_row = request.form['seat_row']
-        seat_column = request.form['seat_column']
+        first_name = request.form.get('first_name', '').strip()
+        last_name = request.form.get('last_name', '').strip()
+        seat_row = request.form.get('seat_row', '').strip()
+        seat_column = request.form.get('seat_column', '').strip()
 
         # Validate input
-        if not first_name or not last_name or not seat_row or not seat_column:
-            flash("All fields are required.", "danger")
-            return render_template('seat_reservation.html', seating_chart=seating_chart)
+        if not first_name:
+            errors['first_name_error'] = "First name is required."
+        if not last_name:
+            errors['last_name_error'] = "Last name is required."
+        if not seat_row:
+            errors['seat_row_error'] = "Please select a row."
+        if not seat_column:
+            errors['seat_column_error'] = "Please select a column."
 
-        seat_row = int(seat_row)
-        seat_column = int(seat_column)
+        if seat_row and seat_column:
+            try:
+                seat_row = int(seat_row)
+                seat_column = int(seat_column)
+                if seating_chart[seat_row - 1][seat_column - 1] == "X":
+                    errors['seat_row_error'] = f"Seat Row {seat_row}, Column {seat_column} is already reserved."
+            except (ValueError, IndexError):
+                errors['seat_row_error'] = "Invalid row or column selection."
 
-        # Generate eTicket Number
-        constant = "INFOTC4320"
-        e_ticket = ''.join(a + b for a, b in zip(first_name, constant)) + first_name[len(constant):]
+        # If no errors, reserve the seat
+        if not errors:
+            # Generate eTicket
+            constant = "INFOTC4320"
+            e_ticket = ''.join(a + b for a, b in zip(first_name, constant)) + first_name[len(constant):]
+            full_name = f"{first_name} {last_name}"
+            query = """
+                INSERT INTO reservations (passengerName, seatRow, seatColumn, eTicketNumber)
+                VALUES (?, ?, ?, ?)
+            """
+            query_args = (full_name, seat_row, seat_column, e_ticket)
+            query_db(query, query_args)
 
-        # Check seat availability
-        if seating_chart[seat_row - 1][seat_column - 1] == "X":
-            flash(f"Row {seat_row}, Seat {seat_column} is already reserved. Please choose another seat.", "warning")
-            return render_template('seat_reservation.html', seating_chart=seating_chart)
+            flash(f"Seat reserved! Your eTicket: {e_ticket}", "success")
+            return redirect(url_for('seat_reservation'))
 
-        # Create reservation
-        full_name = first_name + " " + last_name
-        query = """
-            INSERT INTO reservations (passengerName, seatRow, seatColumn, eTicketNumber)
-            VALUES (?, ?, ?, ?)
-        """
-        query_args = (full_name, seat_row, seat_column, e_ticket)
-        query_db(query, query_args)
-
-        # Success message
-        success_message = f"Congratulations, {first_name}! Row: {seat_row}, Seat: {seat_column} is now reserved for you. Enjoy your trip! Your eTicket number is: {e_ticket}"
-        flash(success_message, "success")
-        return redirect(url_for('seat_reservation'))
-
-    return render_template('seat_reservation.html', seating_chart=seating_chart)
+    # Pass errors and str function explicitly to template
+    return render_template('seat_reservation.html', seating_chart=seating_chart, errors=errors, str=str, logged_in=session.get('logged_in'))
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=True)

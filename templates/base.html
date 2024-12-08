@@ -34,11 +34,22 @@
                     <a class="nav-link {% if request.endpoint == 'index' %}active{% endif %}" href="{{ url_for('index') }}">Home</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link {% if request.endpoint == 'admin_login' %}active{% endif %}" href="{{ url_for('admin_login') }}">Admin</a>
-                </li>
-                <li class="nav-item">
                     <a class="nav-link {% if request.endpoint == 'seat_reservation' %}active{% endif %}" href="{{ url_for('seat_reservation') }}">Reservations</a>
                 </li>
+                {% if logged_in %}
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'admin_dashboard' %}active{% endif %}" href="{{ url_for('admin_dashboard') }}">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <form action="{{ url_for('admin_logout') }}" method="POST" class="d-inline">
+                            <button class="btn btn-link nav-link" style="padding: 0; text-decoration: none;">Logout ({{ username }})</button>
+                        </form>
+                    </li>
+                {% else %}
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'admin_login' %}active{% endif %}" href="{{ url_for('admin_login') }}">Admin Login</a>
+                    </li>
+                {% endif %}
             </ul>
         </div>
     </nav>
